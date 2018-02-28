@@ -89,41 +89,42 @@ function dlog(id, person, title, content) {
   }
 }
 
-function checkRank(msg, ubi_id, ids, reg) {
-  r6api.getRanks(ubi_id)
-              .then(result => {
-                if (reg) {
-                  msg.reply('вы успешно зарегистрировались, ваш текущий ранг: '+rank_game[result[0].emea.rank]);
-                } else {
-                  msg.reply('вы успешно обновились, ваш текущий ранг: '+rank_game[result[0].emea.rank]);
-                }              
-              let rank = result[0].emea.rank;
-              let roles = msg.channel.guild.roles;
-              let diamond = roles.find('id', ids.diamond_role);
-              let plat = roles.find('id', ids.platinum_role);
-              let gold = roles.find('id', ids.gold_role);
-              let silver = roles.find('id', ids.silver_role);
-              let bronze = roles.find('id', ids.bronze_role);
-              let copper = roles.find('id', ids.copper_role);
-              let unranked = roles.find('id', ids.unranked_role);
-              let user = msg.member;
-              user.removeRoles([diamond, plat, gold, silver, bronze, copper, unranked], 'Снимаю ранг перед обновлением...');
-              if (diamond!=null & rank == 20) {
-                user.addRole(diamond, '... обновлено!');
-              } else if (plat!=null & rank>=17 & rank<20) {
-                user.addRole(plat, '... обновлено!');
-              } else if (gold!=null & rank>=13 & rank<17) {
-                user.addRole(gold, '... обновлено!');
-              } else if (silver!=null & rank>=9 & rank<13) {
-                user.addRole(silver, '... обновлено!');
-              } else if (bronze!=null & rank>=5 & rank<9) {
-                user.addRole(bronze, '... обновлено!');
-              } else if (copper!=null & rank>=1 & rank<5) {
-                user.addRole(copper, '... обновлено!');
-              } else if (unranked!=null & rank == 0) {
-                user.addRole(unranked, '... обновлено!');
-              } 
-              });
+const checkRank = (msg, ubi_id, ids) => {
+  return new Promise(function(resolve, reject) {
+    r6api.getRanks(ubi_id)    
+    .then(result => {      
+      let rank = result[0].emea.rank;
+      let roles = msg.channel.guild.roles;
+      let diamond = roles.find('id', ids.diamond_role);
+      let plat = roles.find('id', ids.platinum_role);
+      let gold = roles.find('id', ids.gold_role);
+      let silver = roles.find('id', ids.silver_role);
+      let bronze = roles.find('id', ids.bronze_role);
+      let copper = roles.find('id', ids.copper_role);
+      let unranked = roles.find('id', ids.unranked_role);
+      let user = msg.member;
+      user.removeRoles([diamond, plat, gold, silver, bronze, copper, unranked], 'Снимаю ранг перед обновлением...');
+      if (diamond!=null & rank == 20) {
+        user.addRole(diamond, '... обновлено!');
+      } else if (plat!=null & rank>=17 & rank<20) {
+        user.addRole(plat, '... обновлено!');
+      } else if (gold!=null & rank>=13 & rank<17) {
+        user.addRole(gold, '... обновлено!');
+      } else if (silver!=null & rank>=9 & rank<13) {
+        user.addRole(silver, '... обновлено!');
+      } else if (bronze!=null & rank>=5 & rank<9) {
+        user.addRole(bronze, '... обновлено!');
+      } else if (copper!=null & rank>=1 & rank<5) {
+        user.addRole(copper, '... обновлено!');
+      } else if (unranked!=null & rank == 0) {
+        user.addRole(unranked, '... обновлено!');
+      }
+      resolve(rank);
+      })
+    .catch(err => {
+      reject(false);
+    })
+  })
 }
 
 console.log('[Start]');
@@ -178,7 +179,7 @@ router.get('/admin/:pass', function(req, res, next) {
 
         let guild = bot.guilds.find('id', guild_id);
         var roles_list = guild.roles.array();
-        var channels_list = guild.channels.filterArray(chl => chl.type = 'text');
+        var channels_list = guild.channels.filterArray(chl => chl.type == 'text');
         //for (var i=0; i < roles_list.length; i++) {
         //  select+='<option value="'+i+'">'+(i+1)+'. '+i].name+'</option>';
         //}
@@ -257,13 +258,13 @@ bot.on('guildCreate', guild => {
 bot.on('message', message => {
   //console.log(message.content);
   if (!message.author.bot & message.guild!=undefined & message.content.startsWith('$rank')) {
-    console.log('[Registration] Start. Nick: '+message.content.slice(6));
+    console.log('[Registration] Start. Nick: '+message.content.split(' ')[1]);
     redis.get('guild_'+message.guild.id, function(err, reply) {
       redis.get('guild_'+message.guild.id, function(err, reply) {
         let settings = JSON.parse(reply);
         var ids = settings.id;
         var prefix = settings.prefix;
-        var nick = message.content.slice(6);
+        var nick = message.content.split(' ')[1];
         redis.get('user_'+message.author.id, function(err, reply) {
           try {
             let user = JSON.parse(reply);
@@ -282,27 +283,43 @@ bot.on('message', message => {
                 "ubisoft_id": result[0].id,
                 "last_update": new Date().getTime()
               } 
-              redis.set('user_'+message.author.id,JSON.stringify(user));
+              redis.set('user_'+message.author.id, JSON.stringify(user));
 
-              checkRank(message, result[0].id, ids, true);
+              checkRank(message, result[0].id, ids).then(result => {
+                dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь зарегистрирован', 'Ник в игре: '+nick+'\nUser id: '+message.author.id);
+                message.reply('вы успешно зарегистрировались, ваш текущий ранг: '+rank_game[result]);
+              })
+              .catch(err => {
+                message.reply('произошла ошибка, обратитесь к <@125634283258773504>, указав время запроса');
+              });
 
-              dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь зарегистрирован', 'Ник в игре: '+nick);
 
             }, reject => {
               message.reply('пользователь с никнеймом '+nick+' не найден!');
             });
-          } else if (nick && can_update) {
-            console.log('[Registration] Updating '+nick);
+          } else if (can_update) {
+            console.log('[Registration] Updating '+ubisoft_id);
 
-            checkRank(message, ubisoft_id, ids, false);
+            let user = {
+              "ubisoft_id": ubisoft_id,
+              "last_update": new Date().getTime()
+            }
+            redis.set('user_'+message.author.id, JSON.stringify(user));
 
-            dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь обновлен', 'Ник в игре: '+nick);
+            checkRank(message, ubisoft_id, ids).then(result => {
+              dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь обновлен', 'id в игре: '+ubisoft_id+'\nUser id: '+message.author.id);
+              message.reply('вы успешно обновились, ваш текущий ранг: '+rank_game[result]);
+            })
+            .catch(err => {
+              message.reply('произошла ошибка, обратитесь к <@125634283258773504>, указав время запроса');
+            });
 
-          } else if (nick && !can_update) {
+
+          } else {
             let timeDiff = Math.round(Math.abs(cooldown - new Date().getTime() + JSON.parse(reply).last_update)/1000);
             //let diffDays = Math.ceil(timeDiff / 86400)-1;
-            let diffHours = Math.ceil((timeDiff % 86400) / 3600);
-            let diffMinutes = Math.ceil((timeDiff % 3600) / 60);
+            let diffHours = Math.ceil((timeDiff % 86400) / 3600)-1;
+            let diffMinutes = Math.ceil((timeDiff % 3600) / 60)-1;
             message.reply('следующее обновление вашего ранга возможно через: **'+diffHours+' ч. '+diffMinutes+' м.**');
             console.log('[Registration] Cooldown dont expired!');
           }
