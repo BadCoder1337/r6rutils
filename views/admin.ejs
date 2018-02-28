@@ -8,7 +8,6 @@
     <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
-    <script></script>
   </head>
   <body>
     <h1><%= title %></h1>
@@ -24,43 +23,97 @@
         <tr>
           <td>Diamond</td>
           <td><select class="form-control" name="diamond">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+                <% if(role.id != settings.id.diamond_role) { %>
+                  <option value="<%= role.id%>"><%= role.name %></option>
+                <% } else { %>
+                  <option selected value="<%= role.id%>"><%= role.name %></option>
+                <% } %>
+              <% }); %>
           </select></td>
         </tr>
         <tr>
           <td>Platinum</td>
           <td><select class="form-control" name="platinum">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+              <% if(role.id != settings.id.platinum_role) { %>
+                <option value="<%= role.id%>"><%= role.name %></option>
+              <% } else { %>
+                <option selected value="<%= role.id%>"><%= role.name %></option>
+              <% } %>
+            <% }); %>
           </select></td>
         </tr>
         <tr>
           <td>Gold</td>
           <td><select class="form-control" name="gold">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+              <% if(role.id != settings.id.gold_role) { %>
+                <option value="<%= role.id%>"><%= role.name %></option>
+              <% } else { %>
+                <option selected value="<%= role.id%>"><%= role.name %></option>
+              <% } %>
+            <% }); %>
           </select></td>
         </tr>
         <tr>
           <td>Silver</td>
           <td><select class="form-control" name="silver">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+              <% if(role.id != settings.id.silver_role) { %>
+                <option value="<%= role.id%>"><%= role.name %></option>
+              <% } else { %>
+                <option selected value="<%= role.id%>"><%= role.name %></option>
+              <% } %>
+            <% }); %>
           </select></td>
         </tr>
         <tr>
           <td>Bronze</td>
           <td><select class="form-control" name="bronze">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+              <% if(role.id != settings.id.bronze_role) { %>
+                <option value="<%= role.id%>"><%= role.name %></option>
+              <% } else { %>
+                <option selected value="<%= role.id%>"><%= role.name %></option>
+              <% } %>
+            <% }); %>
           </select></td>
         </tr>
         <tr>
           <td>Copper</td>
           <td><select class="form-control" name="copper">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+              <% if(role.id != settings.id.copper_role) { %>
+                <option value="<%= role.id%>"><%= role.name %></option>
+              <% } else { %>
+                <option selected value="<%= role.id%>"><%= role.name %></option>
+              <% } %>
+            <% }); %>
           </select></td>
         </tr>
         <tr>
           <td>Unranked</td>
           <td><select class="form-control" name="unranked">
-            <%- roles %>
+            <% roles.forEach(function(role) { %>
+              <% if(role.id != settings.id.unranked_role) { %>
+                <option value="<%= role.id%>"><%= role.name %></option>
+              <% } else { %>
+                <option selected value="<%= role.id%>"><%= role.name %></option>
+              <% } %>
+            <% }); %>
+          </select></td>
+        </tr>
+        <tr>
+          <td><h5>Канал для логов</h5></td>
+          <td><select class="form-control" name="logs">
+            <% channels.forEach(function(channel) { %>
+              <% if(channel.id != settings.id.logs_channel) { %>
+                <option value="<%= channel.id%>"><%= channel.name %></option>
+              <% } else { %>
+                <option selected value="<%= channel.id%>"><%= channel.name %></option>
+              <% } %>
+            <% }); %>
           </select></td>
         </tr>
         <tr>
