@@ -107,6 +107,7 @@
         <tr>
           <td><h5>Канал для логов</h5></td>
           <td><select class="form-control" name="logs">
+            <option value="">(нет)</option>
             <% channels.forEach(function(channel) { %>
               <% if(channel.id != settings.id.logs_channel) { %>
                 <option value="<%= channel.id%>"><%= channel.name %></option>

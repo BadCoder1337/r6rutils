@@ -7,6 +7,10 @@ var r6api = require('r6api')({
   password: cfg.r6sapi_pass
 });
 
+var support_id = '125634283258773504';
+var support_dm = '417082480365928448';
+var help_message = fs.readFileSync('help.txt', 'utf8');
+
 var cooldown = 24*3600*1000; 
 var rank_game = [
   'Без ранга',
@@ -103,26 +107,30 @@ const checkRank = (msg, ubi_id, ids) => {
       let copper = roles.find('id', ids.copper_role);
       let unranked = roles.find('id', ids.unranked_role);
       let user = msg.member;
-      user.removeRoles([diamond, plat, gold, silver, bronze, copper, unranked], 'Снимаю ранг перед обновлением...');
-      if (diamond!=null & rank == 20) {
-        user.addRole(diamond, '... обновлено!');
-      } else if (plat!=null & rank>=17 & rank<20) {
-        user.addRole(plat, '... обновлено!');
-      } else if (gold!=null & rank>=13 & rank<17) {
-        user.addRole(gold, '... обновлено!');
-      } else if (silver!=null & rank>=9 & rank<13) {
-        user.addRole(silver, '... обновлено!');
-      } else if (bronze!=null & rank>=5 & rank<9) {
-        user.addRole(bronze, '... обновлено!');
-      } else if (copper!=null & rank>=1 & rank<5) {
-        user.addRole(copper, '... обновлено!');
-      } else if (unranked!=null & rank == 0) {
-        user.addRole(unranked, '... обновлено!');
-      }
+      user.removeRoles([diamond, plat, gold, silver, bronze, copper, unranked], 'Снимаю ранг перед обновлением...').then(user => {
+        if (diamond!=null & rank == 20) {
+          user.addRole(diamond, '... сохранено!');
+        } else if (plat!=null & rank>=17 & rank<20) {
+          user.addRole(plat, '... сохранено!');
+        } else if (gold!=null & rank>=13 & rank<17) {
+          user.addRole(gold, '... сохранено!');
+        } else if (silver!=null & rank>=9 & rank<13) {
+          user.addRole(silver, '... сохранено!');
+        } else if (bronze!=null & rank>=5 & rank<9) {
+          user.addRole(bronze, '... сохранено!');
+        } else if (copper!=null & rank>=1 & rank<5) {
+          user.addRole(copper, '... сохранено!');
+        } else if (unranked!=null & rank == 0) {
+          user.addRole(unranked, '... сохранено!');
+        }
+      })
+      .catch(err => {
+        reject('нет прав модерации');
+      });
       resolve(rank);
       })
     .catch(err => {
-      reject(false);
+      reject('нет доступа к r6db');
     })
   })
 }
@@ -175,7 +183,7 @@ router.get('/admin/:pass', function(req, res, next) {
     if (guild_id) {
       redis.get('guild_'+guild_id, function(err, reply) {
         var settings = JSON.parse(reply);
-        dlog(settings.id.logs_channel,'IP '+req.get('X-Forwarded-For'), 'Доступ к настройкам бота через веб', 'https://r6rutils.herokuapp/admin/'+req.params.pass);
+        dlog(settings.id.logs_channel,'IP '+req.get('X-Forwarded-For'), 'Доступ к настройкам бота через веб', 'https://r6rutils.herokuapp.com/admin/'+req.params.pass);
 
         let guild = bot.guilds.find('id', guild_id);
         var roles_list = guild.roles.array();
@@ -192,23 +200,6 @@ router.get('/admin/:pass', function(req, res, next) {
     }
   })
 })
-
-// router.get('/rank/:nick', function(req, res, next) {
-//   //console.log(req.body.pass);
-//   if (!req.params.nick=='') {
-//     r6api.findByName(req.params.nick)
-//       .then(result => {
-//         //console.log(result[0].id);
-//         r6api.getRanks(result[0].id)
-//           .then(result => {
-//             console.log(result[0].emea.rank);
-//             res.render('index', { title: 'Your rank is: '+rank_game[result[0].emea.rank]});
-//           })
-//       })
-//   } else {
-//     res.redirect('/');
-//   }
-// });
 
 router.post('/admin/:pass', function(req, res) {
   console.log('[Web] Posting to admin panel: '+req.params.pass);
@@ -246,6 +237,13 @@ module.exports = app;
 
 bot.on('ready', () => {
   console.log('[Bot started]');
+  bot.user.setPresence({
+    status: 'online',
+    game: {
+      name: 'ЛС для помощи по боту',
+      type: 'WATCHING'
+    }
+  });
 });
 
 bot.on('guildCreate', guild => {
@@ -256,15 +254,36 @@ bot.on('guildCreate', guild => {
 });
 
 bot.on('message', message => {
+  if (message.author.bot) {return;}
   //console.log(message.content);
+  if ((message.channel.type == 'dm' || message.channel.type == 'group') && message.author.id == support_id) {
+    //let msg = message.content.replace(/\s{2,}/g, ' ').split(' ');
+    let dm = bot.users.find('id', message.content.slice(0, 18));
+    //console.log(msg[0]);
+    //console.log(dm);
+    if (dm) {dm.send('Ответ от поддержки ('+message.author.username+'#'+message.author.discriminator+'):\n\n'+message.content.slice(19)).then(msg => {
+      message.react('🆗');
+    });}
+    return;
+  } else if (message.channel.type == 'dm' || message.channel.type == 'group') {
+    if (message.content.startsWith('$support')) {
+      let dm = bot.users.find('id', support_id);
+      //console.log(dm)
+      if (dm) {dm.send(message.author.id+'\n'+message.author.username+'#'+message.author.discriminator+'\n\n'+message.content.slice(9)).then(msg => {
+        message.react('🆗');
+      });}
+    } else {message.channel.send(help_message);}
+    return;
+  }
+
   if (!message.author.bot & message.guild!=undefined & message.content.startsWith('$rank')) {
-    console.log('[Registration] Start. Nick: '+message.content.split(' ')[1]);
+    var nick = message.content.replace(/\s{2,}/g, ' ').split(' ')[1];
+    console.log('[Registration] Start.Discord: '+message.author.username+'#'+message.author.discriminator+', Ubi nick: '+nick);
     redis.get('guild_'+message.guild.id, function(err, reply) {
       redis.get('guild_'+message.guild.id, function(err, reply) {
         let settings = JSON.parse(reply);
         var ids = settings.id;
         var prefix = settings.prefix;
-        var nick = message.content.split(' ')[1];
         redis.get('user_'+message.author.id, function(err, reply) {
           try {
             let user = JSON.parse(reply);
@@ -275,7 +294,9 @@ bot.on('message', message => {
             console.log('[Registration] New User');
             var new_user = true;
           }
-          if (new_user) {
+          if (!nick && new_user) {
+            message.reply('при первом запросе необходимо указать ник!\n\n*Поддержка - ЛС бота*');
+          } else if (new_user) {
             console.log('[Registration] Searching at r6db.com');
             r6api.findByName(nick)
             .then(result => {
@@ -286,16 +307,17 @@ bot.on('message', message => {
               redis.set('user_'+message.author.id, JSON.stringify(user));
 
               checkRank(message, result[0].id, ids).then(result => {
-                dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь зарегистрирован', 'Ник в игре: '+nick+'\nUser id: '+message.author.id);
-                message.reply('вы успешно зарегистрировались, ваш текущий ранг: '+rank_game[result]);
+                dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь зарегистрирован', 'Профиль [r6db](https://r6db.com/player/'+user.ubisoft_id+')\nUser id: '+message.author.id);
+                message.reply('вы успешно зарегистрировались, ваш текущий ранг: `'+rank_game[result]+'`');
               })
-              .catch(err => {
-                message.reply('произошла ошибка, обратитесь к <@125634283258773504>, указав время запроса');
+              .catch(reason => {
+                message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
               });
 
-
-            }, reject => {
-              message.reply('пользователь с никнеймом '+nick+' не найден!');
+            })
+            .catch(reject => {
+              message.reply('пользователь с никнеймом '+nick+' не найден!\n\n*Поддержка - ЛС бота*');
+              console.log(reject);
             });
           } else if (can_update) {
             console.log('[Registration] Updating '+ubisoft_id);
@@ -307,11 +329,11 @@ bot.on('message', message => {
             redis.set('user_'+message.author.id, JSON.stringify(user));
 
             checkRank(message, ubisoft_id, ids).then(result => {
-              dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь обновлен', 'id в игре: '+ubisoft_id+'\nUser id: '+message.author.id);
-              message.reply('вы успешно обновились, ваш текущий ранг: '+rank_game[result]);
+              dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь обновлен', 'Профиль [r6db](https://r6db.com/player/'+user.ubisoft_id+')\nUser id: '+message.author.id);
+              message.reply('вы успешно обновились, ваш текущий ранг: `'+rank_game[result]+'`');
             })
-            .catch(err => {
-              message.reply('произошла ошибка, обратитесь к <@125634283258773504>, указав время запроса');
+            .catch(reason => {
+              message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
             });
 
 
@@ -320,7 +342,7 @@ bot.on('message', message => {
             //let diffDays = Math.ceil(timeDiff / 86400)-1;
             let diffHours = Math.ceil((timeDiff % 86400) / 3600)-1;
             let diffMinutes = Math.ceil((timeDiff % 3600) / 60)-1;
-            message.reply('следующее обновление вашего ранга возможно через: **'+diffHours+' ч. '+diffMinutes+' м.**');
+            message.reply('следующее обновление вашего ранга возможно через: **'+diffHours+' ч. '+diffMinutes+' м.**\n\n*Поддержка - ЛС бота*');
             console.log('[Registration] Cooldown dont expired!');
           }
         })
