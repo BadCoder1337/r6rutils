@@ -13,27 +13,27 @@ var help_message = fs.readFileSync('help.txt', 'utf8');
 
 var cooldown = 24*3600*1000; 
 var rank_game = [
-  'Без ранга',
-  'Медь 4',
-  'Медь 3',
-  'Медь 2',
-  'Медь 1',
-  'Бронза 4',
-  'Бронза 3',
-  'Бронза 2',
-  'Бронза 1',
-  'Серебро 4',
-  'Серебро 3',
-  'Серебро 2',
-  'Серебро 1',
-  'Золото 4',
-  'Золото 3',
-  'Золото 2',
-  'Золото 1',
-  'Платина 3',
-  'Платина 2',
-  'Платина 1',
-  'АЛМАЗ'
+  'Unranked',
+  'Copper 4',
+  'Copper 3',
+  'Copper 2',
+  'Copper 1',
+  'Bronze 4',
+  'Bronze 3',
+  'Bronze 2',
+  'Bronze 1',
+  'Silver 4',
+  'Silver 3',
+  'Silver 2',
+  'Silver 1',
+  'Gold 4',
+  'Gold 3',
+  'Gold 2',
+  'Gold 1',
+  'Platinum 3',
+  'Platinum 2',
+  'Platinum 1',
+  'Diamond'
 ];
 
 var redis = require('redis').createClient(process.env.REDIS_URL);
@@ -64,7 +64,7 @@ function ConstSett() {
   this.id = {};
   this.id.diamond_role = "";
   this.id.platinum_role = "";
-  this.id.gold_role = "";             //конструктор говно
+  this.id.gold_role = "";
   this.id.silver_role = "";
   this.id.bronze_role = "";
   this.id.copper_role = "";
@@ -109,28 +109,28 @@ const checkRank = (msg, ubi_id, ids) => {
       let user = msg.member;
       user.removeRoles([diamond, plat, gold, silver, bronze, copper, unranked], 'Снимаю ранг перед обновлением...').then(user => {
         if (diamond!=null & rank == 20) {
-          user.addRole(diamond, '... сохранено!');
+          user.addRole(diamond, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         } else if (plat!=null & rank>=17 & rank<20) {
-          user.addRole(plat, '... сохранено!');
+          user.addRole(plat, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         } else if (gold!=null & rank>=13 & rank<17) {
-          user.addRole(gold, '... сохранено!');
+          user.addRole(gold, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         } else if (silver!=null & rank>=9 & rank<13) {
-          user.addRole(silver, '... сохранено!');
+          user.addRole(silver, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         } else if (bronze!=null & rank>=5 & rank<9) {
-          user.addRole(bronze, '... сохранено!');
+          user.addRole(bronze, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         } else if (copper!=null & rank>=1 & rank<5) {
-          user.addRole(copper, '... сохранено!');
+          user.addRole(copper, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         } else if (unranked!=null & rank == 0) {
-          user.addRole(unranked, '... сохранено!');
+          user.addRole(unranked, '... сохранено!').catch(err => {console.log(err);reject('нет прав модерации');});
         }
-      })
-      .catch(err => {
+      resolve(rank);
+      }, err => {
+        console.log(err);
         reject('нет прав модерации');
       });
-      resolve(rank);
-      })
-    .catch(err => {
-      reject('нет доступа к r6db');
+      }, err => {
+        console.log(err);
+        reject('нет доступа к r6db');
     })
   })
 }
@@ -183,7 +183,7 @@ router.get('/admin/:pass', function(req, res, next) {
     if (guild_id) {
       redis.get('guild_'+guild_id, function(err, reply) {
         var settings = JSON.parse(reply);
-        dlog(settings.id.logs_channel,'IP '+req.get('X-Forwarded-For'), 'Доступ к настройкам бота через веб', 'https://r6rutils.herokuapp.com/admin/'+req.params.pass);
+        dlog(settings.id.logs_channel,'IP '+req.get('X-Forwarded-For'), 'Доступ к настройкам бота через веб', 'https://r6rutils.herokuapp.com/admin/'+req.params.pass.slice(0,-4)+'****');
 
         let guild = bot.guilds.find('id', guild_id);
         var roles_list = guild.roles.array();
@@ -278,7 +278,7 @@ bot.on('message', message => {
 
   if (!message.author.bot & message.guild!=undefined & message.content.startsWith('$rank')) {
     var nick = message.content.replace(/\s{2,}/g, ' ').split(' ')[1];
-    console.log('[Registration] Start.Discord: '+message.author.username+'#'+message.author.discriminator+', Ubi nick: '+nick);
+    console.log('[Registration] Start. Discord: '+message.author.username+'#'+message.author.discriminator+', Ubi nick: '+nick);
     redis.get('guild_'+message.guild.id, function(err, reply) {
       redis.get('guild_'+message.guild.id, function(err, reply) {
         let settings = JSON.parse(reply);
@@ -309,13 +309,11 @@ bot.on('message', message => {
               checkRank(message, result[0].id, ids).then(result => {
                 dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь зарегистрирован', 'Профиль [r6db](https://r6db.com/player/'+user.ubisoft_id+')\nUser id: '+message.author.id);
                 message.reply('вы успешно зарегистрировались, ваш текущий ранг: `'+rank_game[result]+'`');
-              })
-              .catch(reason => {
+              }, reason => {
                 message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
               });
 
-            })
-            .catch(reject => {
+            }, reject => {
               message.reply('пользователь с никнеймом '+nick+' не найден!\n\n*Поддержка - ЛС бота*');
               console.log(reject);
             });
@@ -331,8 +329,7 @@ bot.on('message', message => {
             checkRank(message, ubisoft_id, ids).then(result => {
               dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь обновлен', 'Профиль [r6db](https://r6db.com/player/'+user.ubisoft_id+')\nUser id: '+message.author.id);
               message.reply('вы успешно обновились, ваш текущий ранг: `'+rank_game[result]+'`');
-            })
-            .catch(reason => {
+            }, reason => {
               message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
             });
 
