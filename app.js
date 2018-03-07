@@ -1,14 +1,10 @@
-//test server https://discord.gg/qgVchxV
-
 var fs = require('fs');
-var cfg = JSON.parse(fs.readFileSync('auth.json', 'utf8'));
 var r6api = require('r6api')({
-  email: cfg.r6sapi_email,
-  password: cfg.r6sapi_pass
+  email: process.env.R6API_LOGIN,
+  password: process.env.R6API_PASSWORD
 });
 
-var support_id = '125634283258773504';
-var support_dm = '417082480365928448';
+var support_id = process.env.SUPPORT_ID;
 var help_message = fs.readFileSync('help.txt', 'utf8');
 
 var cooldown = 24*3600*1000; 
@@ -52,10 +48,6 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var router = express.Router();
-
-//var index = require('./routes/index');
-//var users = require('./routes/users');
-
 var app = express();
 
 //запуск приложения
@@ -86,7 +78,7 @@ function dlog(id, person, title, content) {
     }
   }}
   try {
-    bot.channels.find('id', id).send(msg);
+    bot.channels.find('id', id).send(msg).catch(err => console.log('[dlog failed]'));
   } catch (err) {
     console.log('[dlog failed]');
     console.log(msg);
@@ -188,9 +180,6 @@ router.get('/admin/:pass', function(req, res, next) {
         let guild = bot.guilds.find('id', guild_id);
         var roles_list = guild.roles.array();
         var channels_list = guild.channels.filterArray(chl => chl.type == 'text');
-        //for (var i=0; i < roles_list.length; i++) {
-        //  select+='<option value="'+i+'">'+(i+1)+'. '+i].name+'</option>';
-        //}
         res.render('admin', { title: 'Настройка '+guild.name, roles: roles_list, channels: channels_list, settings: settings});
     
 
@@ -313,7 +302,8 @@ bot.on('message', message => {
                 message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
               });
 
-            }, reject => {
+            })
+            .catch(reject => {
               message.reply('пользователь с никнеймом '+nick+' не найден!\n\n*Поддержка - ЛС бота*');
               console.log(reject);
             });
@@ -348,4 +338,4 @@ bot.on('message', message => {
   }
 });
 
-bot.login(cfg.discord_token);
+bot.login(process.env.DISCORD_TOKEN);
