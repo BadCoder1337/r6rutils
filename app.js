@@ -52,6 +52,14 @@ var app = express();
 
 //запуск приложения
 
+var waiting_list = [];
+
+function unwait(id) {
+  if (waiting_list.indexOf(id) != -1) {
+  waiting_list.splice(waiting_list.indexOf(id), 1);
+  }
+}
+
 function ConstSett() {
   this.id = {};
   this.id.diamond_role = "";
@@ -62,6 +70,10 @@ function ConstSett() {
   this.id.copper_role = "";
   this.id.unranked_role = "";
   this.id.logs_channel = "";
+}
+
+function stopType (m) {
+  m.channel.stopTyping();
 }
 
 function dlog(id, person, title, content) {
@@ -244,6 +256,8 @@ bot.on('guildCreate', guild => {
 
 bot.on('message', message => {
   if (message.author.bot) {return;}
+  
+  if (message.author.id == support_id && message.content == '$stoptyping') {message.channel.stopTyping(true); return;}
   //console.log(message.content);
   if ((message.channel.type == 'dm' || message.channel.type == 'group') && message.author.id == support_id) {
     //let msg = message.content.replace(/\s{2,}/g, ' ').split(' ');
@@ -266,8 +280,13 @@ bot.on('message', message => {
   }
 
   if (!message.author.bot & message.guild!=undefined & message.content.startsWith('$rank')) {
+    if (waiting_list.indexOf(message.author.id) != -1) {
+      message.reply('не спамьте! Ваше сообщение обрабатывается.');
+    } else {
+      waiting_list.push(message.author.id);
+      message.channel.startTyping();
     var nick = message.content.replace(/\s{2,}/g, ' ').split(' ')[1];
-    console.log('[Registration] Start. Discord: '+message.author.username+'#'+message.author.discriminator+', Ubi nick: '+nick);
+    console.log('[Registration]['+message.guild.name+', '+message.channel.name+'] Start. Discord: '+message.author.username+'#'+message.author.discriminator+', Ubi nick: '+nick);
     redis.get('guild_'+message.guild.id, function(err, reply) {
       redis.get('guild_'+message.guild.id, function(err, reply) {
         let settings = JSON.parse(reply);
@@ -284,7 +303,8 @@ bot.on('message', message => {
             var new_user = true;
           }
           if (!nick && new_user) {
-            message.reply('при первом запросе необходимо указать ник!\n\n*Поддержка - ЛС бота*');
+            message.reply('при первом запросе необходимо указать ник!\n\n*Поддержка - ЛС бота*').then(m => stopType(m));
+            unwait(message.author.id);
           } else if (new_user) {
             console.log('[Registration] Searching at r6db.com');
             r6api.findByName(nick)
@@ -297,14 +317,17 @@ bot.on('message', message => {
 
               checkRank(message, result[0].id, ids).then(result => {
                 dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь зарегистрирован', 'Профиль [r6db](https://r6db.com/player/'+user.ubisoft_id+')\nUser id: '+message.author.id);
-                message.reply('вы успешно зарегистрировались, ваш текущий ранг: `'+rank_game[result]+'`');
+                message.reply('вы успешно зарегистрировались, ваш текущий ранг: `'+rank_game[result]+'`').then(m => stopType(m));
+                unwait(message.author.id);
               }, reason => {
-                message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
+                message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*').then(m => stopType(m));
+                unwait(message.author.id);
               });
 
             })
             .catch(reject => {
-              message.reply('пользователь с никнеймом '+nick+' не найден!\n\n*Поддержка - ЛС бота*');
+              message.reply('пользователь с никнеймом '+nick+' не найден!\n\n*Поддержка - ЛС бота*').then(m => stopType(m));
+              unwait(message.author.id);
               console.log(reject);
             });
           } else if (can_update) {
@@ -318,9 +341,11 @@ bot.on('message', message => {
 
             checkRank(message, ubisoft_id, ids).then(result => {
               dlog(ids.logs_channel, message.author.username+'#'+message.author.discriminator, 'Пользователь обновлен', 'Профиль [r6db](https://r6db.com/player/'+user.ubisoft_id+')\nUser id: '+message.author.id);
-              message.reply('вы успешно обновились, ваш текущий ранг: `'+rank_game[result]+'`');
+              message.reply('вы успешно обновились, ваш текущий ранг: `'+rank_game[result]+'`').then(m => stopType(m));
+              unwait(message.author.id);
             }, reason => {
-              message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*');
+              message.reply('произошла ошибка!\nПричина: **'+reason+'**\n\n*Поддержка - ЛС бота*').then(m => stopType(m));
+              unwait(message.author.id);
             });
 
 
@@ -329,12 +354,14 @@ bot.on('message', message => {
             //let diffDays = Math.ceil(timeDiff / 86400)-1;
             let diffHours = Math.ceil((timeDiff % 86400) / 3600)-1;
             let diffMinutes = Math.ceil((timeDiff % 3600) / 60)-1;
-            message.reply('следующее обновление вашего ранга возможно через: **'+diffHours+' ч. '+diffMinutes+' м.**\n\n*Поддержка - ЛС бота*');
+            message.reply('следующее обновление вашего ранга возможно через: **'+diffHours+' ч. '+diffMinutes+' м.**\n\n*Поддержка - ЛС бота*').then(m => stopType(m));
+            unwait(message.author.id);
             console.log('[Registration] Cooldown dont expired!');
           }
         })
       });
     });
+  }
   }
 });
 
